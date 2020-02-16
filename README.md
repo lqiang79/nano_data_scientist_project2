@@ -1,6 +1,22 @@
 # Disaster Response Pipeline Project
 
 ### Instructions:
+
+0. To prepare the workspace of the project
+
+    - Download the project code from the github repository
+    - active your local venv in project root path:
+
+        ```bash
+        python3 -m venv venv
+        ```
+
+    - insstall all requirements
+
+        ```bash
+        pip3 install -r requirements.txt
+        ```
+
 1. Run the following commands in the project's root directory to set up your database and model.
 
     - To run ETL pipeline that cleans data and stores in database
