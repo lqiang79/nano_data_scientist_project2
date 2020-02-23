@@ -1,23 +1,25 @@
 import pickle
-from sklearn.base import BaseEstimator, TransformerMixin
+import sys
+import pandas as pd
+import numpy as np
+import re
+
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.multioutput import MultiOutputClassifier
-from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-import sys
-import pandas as pd
-import numpy as np
 
 from sqlalchemy import create_engine
 
 import nltk
 nltk.download(['punkt', 'wordnet', 'averaged_perceptron_tagger'])
 nltk.download('stopwords')
+
 
 def load_data(database_filepath):
     """ load data from give file path
@@ -26,9 +28,9 @@ def load_data(database_filepath):
         database_filepath {string} -- file path of database
 
     Returns:
-        X: {Dataframe} -- dataframe of message and genre
-        Y: features matrix of request, offer etc.
-        category_names: category names
+        X: {DataFrame} -- dataframe of message and genre
+        y: {DataFrame} -- features matrix of request, offer etc.
+        category_names: {DataFrame} -- category names
     """
     engine = create_engine('sqlite:///'+database_filepath)
     df = pd.read_sql_table("messages_categories", engine)
@@ -48,15 +50,15 @@ def tokenize(text):
     Returns:
         tokenized words list
     """
-    # tokenize and lemmatize text
-    tokens = word_tokenize(text)
-    lemmatizer = WordNetLemmatizer()
-    # final output after lowercasing/stripping
-    final_token = []
-    for t in tokens:
-        tok = lemmatizer.lemmatize(t).lower().strip()
-        final_token.append(tok)
-    return final_token
+    # Normalize text
+    text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
+    # Tokenize text
+    words = word_tokenize(text)
+    # Remove stop words
+    words = [word for word in words if word not in stopwords.words("english")]
+    # Reduce words to their root form
+    words = [WordNetLemmatizer().lemmatize(word) for word in words]
+    return words
 
 
 def build_model():
@@ -67,27 +69,21 @@ def build_model():
     """
     # building a pipeline with 3 steps: vectorize, transform, classify
     pipeline = Pipeline([
-        ('vect', CountVectorizer(tokenizer=tokenize)),
-        ('tfidf', TfidfTransformer()),
-        ('clf', RandomForestClassifier())
+        ('features', FeatureUnion([
+            ('text_pipeline', Pipeline([
+                ('vect', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer())
+            ]))
+        ])),
+        ('clf', MultiOutputClassifier(RandomForestClassifier()))
     ])
-    
-    parameters = {'vect__ngram_range': ((1, 1), (1, 2)),
-                  'vect__max_df': (0.75, 1.0)
-                  }
-    model = GridSearchCV(estimator=pipeline,
-            param_grid=parameters)
-    return model
-    
-"""     parameters = {
-        'tfidf__use_idf':[True, False],
-        'clf__estimator__n_estimators': [30,50,100],
-        'clf__estimator__max_depth': [3,5],
-        'clf__estimator__min_samples_split': [3,6],
-        'clf__estimator__criterion' : ['gini', 'entropy']
+    parameters = {
+        'features__text_pipeline__tfidf__use_idf': (True, False),
+        'clf__estimator__n_estimators': [30, 40]
     }
-    gscvModel = GridSearchCV(pipeline, param_grid=parameters, cv=3, verbose=10)
-    return gscvModel """
+    model = GridSearchCV(estimator=pipeline,
+                         param_grid=parameters, cv=5, n_jobs=-1)
+    return model
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
@@ -102,21 +98,10 @@ def evaluate_model(model, X_test, Y_test, category_names):
     Y_pred = model.predict(X_test)
 
     # print classification & accuracy score
-    print(classification_report(np.hstack(Y_test.values), np.hstack(Y_pred), target_names=category_names))
-    print('Accuracy: {}'.format(np.mean(Y_test.values == Y_pred)))
-
-    for idx in range(Y_test.columns.shape[0]):
-        test = Y_test[Y_test.columns[idx]].values
-        pred = Y_pred[:, idx]
-
-        # calculate different scores
-        accu = accuracy_score(test, pred)
-        prec = precision_score(test, pred)
-        reca = recall_score(test, pred)
-        f1_s = f1_score(test, pred)
-        # print results
-        print(
-            f"{Y_test.columns[idx]:22s} | accuracy: {accu:.2f} | precision: {prec:.2f} | recall: {reca:.2f} | f1 score: {f1_s:.2f}")
+    y_pred = model.predict(X_test)
+    for i, category in enumerate(category_names):
+        reports = classification_report(Y_test.iloc[i], Y_pred[i])
+        print(f'category: {category}\n {reports}')
 
 
 def save_model(model, model_filepath):

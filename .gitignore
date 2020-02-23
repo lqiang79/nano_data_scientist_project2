@@ -1,2 +1,3 @@
 .vscode/
 /venv/
+*/classifier.pkl
