@@ -8,11 +8,11 @@ def load_data(messages_filepath, categories_filepath):
     load data of messages and catagories. Two dataset will be merge together base on ID
 
     Args:
-        messages_filepath: file path of csv messages dataset
-        categroies_filepath: file path of csv categries dataset
+        messages_filepath: string, file path of csv messages dataset
+        categroies_filepath: string, file path of csv categries dataset
     
     Returns:
-        df: a merged data frame of messages and categries. 
+        df: DataFrame, a merged data frame of messages and categries. 
     '''
     messages = pd.read_csv(messages_filepath) 
     categories = pd.read_csv(categories_filepath)
@@ -24,10 +24,10 @@ def load_data(messages_filepath, categories_filepath):
 def clean_data(df):
     '''
     Args:
-        df: a data frame contains all messages and categories
+        df: DataFrame, a data frame contains all messages and categories
     
     Returns:
-        df: cleaned data frame
+        df: DataFrame, cleanup data
     '''
     # create a dataframe of the 36 individual category columns
     categories = df.categories.str.split(";", expand=True)
@@ -47,7 +47,7 @@ def clean_data(df):
         categories[column] = categories[column].str.strip().str[-1]
         
         # convert column from string to numeric
-        categories[column] = categories[column].astype(int)
+        categories[column] = categories[column].astype(int).apply(lambda x: 1 if x == 1 else 0)
 
     # drop the original categories column from `df`
     df = df.drop(labels=["categories"], axis=1)
