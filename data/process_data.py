@@ -10,14 +10,15 @@ def load_data(messages_filepath, categories_filepath):
     Args:
         messages_filepath: string, file path of csv messages dataset
         categroies_filepath: string, file path of csv categries dataset
-    
+
     Returns:
         df: DataFrame, a merged data frame of messages and categries. 
     '''
-    messages = pd.read_csv(messages_filepath) 
+    messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
 
-    df = pd.merge(messages, categories, how='left', left_on='id', right_on='id').drop(labels=["id"], axis=1)
+    df = pd.merge(messages, categories, how='left', left_on='id',
+                  right_on='id').drop(labels=["id"], axis=1)
     return df
 
 
@@ -25,7 +26,7 @@ def clean_data(df):
     '''
     Args:
         df: DataFrame, a data frame contains all messages and categories
-    
+
     Returns:
         df: DataFrame, cleanup data
     '''
@@ -35,7 +36,7 @@ def clean_data(df):
     title_row = categories.iloc[0]
 
     # use this row to extract a list of new column names for categories.
-    # one way is to apply a lambda function that takes everything 
+    # one way is to apply a lambda function that takes everything
     # up to the second to last character of each string with slicing
     category_colnames = []
     for i in title_row:
@@ -45,9 +46,9 @@ def clean_data(df):
     for column in categories[1:]:
         # set each value to be the last character of the string
         categories[column] = categories[column].str.strip().str[-1]
-        
+
         # convert column from string to numeric
-        categories[column] = categories[column].astype(int).apply(lambda x: 1 if x == 1 else 0)
+        categories[column] = categories[column].astype(int)
 
     # drop the original categories column from `df`
     df = df.drop(labels=["categories"], axis=1)
@@ -55,6 +56,10 @@ def clean_data(df):
     df = df.join(categories)
     # drop duplicates
     df = df.drop_duplicates()
+
+    # clean up all related = 2 and not categrory data
+    df = df[(df.related != 2) & (df[category_colnames].sum(axis=1) != 0)]
+
     return df
 
 
@@ -66,8 +71,8 @@ def save_data(df, database_filename):
         df: cleaned dataframe 
         database_filename: target database file name
     '''
-    engine = create_engine('sqlite:///'+database_filename)
-    df.to_sql('messages_categories', engine, index=False, if_exists = 'replace')
+    engine = create_engine('sqlite:///' + database_filename)
+    df.to_sql('messages_categories', engine, index=False, if_exists='replace')
 
 
 def main():
@@ -81,18 +86,18 @@ def main():
 
         print('Cleaning data...')
         df = clean_data(df)
-        
+
         print('Saving data...\n    DATABASE: {}'.format(database_filepath))
         save_data(df, database_filepath)
-        
+
         print('Cleaned data saved to database!')
-    
+
     else:
-        print('Please provide the filepaths of the messages and categories '\
-              'datasets as the first and second argument respectively, as '\
-              'well as the filepath of the database to save the cleaned data '\
-              'to as the third argument. \n\nExample: python process_data.py '\
-              'disaster_messages.csv disaster_categories.csv '\
+        print('Please provide the filepaths of the messages and categories '
+              'datasets as the first and second argument respectively, as '
+              'well as the filepath of the database to save the cleaned data '
+              'to as the third argument. \n\nExample: python process_data.py '
+              'disaster_messages.csv disaster_categories.csv '
               'DisasterResponse.db')
 
 

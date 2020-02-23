@@ -71,7 +71,13 @@ def build_model():
         ('tfidf', TfidfTransformer()),
         ('clf', RandomForestClassifier())
     ])
-    return pipeline
+    
+    parameters = {'vect__ngram_range': ((1, 1), (1, 2)),
+                  'vect__max_df': (0.75, 1.0)
+                  }
+    model = GridSearchCV(estimator=pipeline,
+            param_grid=parameters)
+    return model
     
 """     parameters = {
         'tfidf__use_idf':[True, False],
@@ -94,6 +100,10 @@ def evaluate_model(model, X_test, Y_test, category_names):
         catagory_names: string, the name of category
     """
     Y_pred = model.predict(X_test)
+
+    # print classification & accuracy score
+    print(classification_report(np.hstack(Y_test.values), np.hstack(Y_pred), target_names=category_names))
+    print('Accuracy: {}'.format(np.mean(Y_test.values == Y_pred)))
 
     for idx in range(Y_test.columns.shape[0]):
         test = Y_test[Y_test.columns[idx]].values
