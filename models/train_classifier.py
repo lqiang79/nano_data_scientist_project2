@@ -81,8 +81,7 @@ def build_model():
         'features__text_pipeline__tfidf__use_idf': (True, False),
         'clf__estimator__n_estimators': [30, 40]
     }
-    model = GridSearchCV(estimator=pipeline,
-                         param_grid=parameters, cv=5, n_jobs=-1)
+    model = GridSearchCV(estimator=pipeline, param_grid=parameters, cv=5, n_jobs=-1)
     return model
 
 
