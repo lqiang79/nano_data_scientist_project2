@@ -1,13 +1,14 @@
 import json
 import plotly
 import pandas as pd
+import numpy as np
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
 from flask import Flask
 from flask import render_template, request, jsonify
-from plotly.graph_objs import Bar
+from plotly.graph_objs import Bar, Pie
 from sklearn.externals import joblib
 from sqlalchemy import create_engine
 
@@ -83,6 +84,18 @@ def index():
                 'xaxis': {
                     'title': "Category Name"
                 }
+            }
+        },
+        {
+            'data': [
+                Pie(
+                    labels=top_ten_category_names,
+                    values=top_ten_category_count
+                )
+            ],
+
+            'layout': {
+                'title': 'Percentages of Messages in Categories (Top 10)',
             }
         }
     ]
